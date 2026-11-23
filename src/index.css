@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f4f4f6;
+  --panel: #ffffff;
+  --ink: #222226;
+  --mute: #707078;
+  --line: #b9b9c4;
+  --c0: #c2410c;
+  --c1: #6d28d9;
+  --c2: #0e7490;
+  --c3: #15803d;
+  --c4: #be185d;
+  --c5: #52525b;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1e1e22;
+    --panel: #26262b;
+    --ink: #e6e6ea;
+    --mute: #9b9ba5;
+    --line: #4b4b55;
+    --c0: #fb923c;
+    --c1: #a78bfa;
+    --c2: #22d3ee;
+    --c3: #4ade80;
+    --c4: #f472b6;
+    --c5: #a1a1aa;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"],
+.dark {
+  --bg: #1e1e22;
+  --panel: #26262b;
+  --ink: #e6e6ea;
+  --mute: #9b9ba5;
+  --line: #4b4b55;
+  --c0: #fb923c;
+  --c1: #a78bfa;
+  --c2: #22d3ee;
+  --c3: #4ade80;
+  --c4: #f472b6;
+  --c5: #a1a1aa;
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Custom scrollbar matching the minimal palette */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}

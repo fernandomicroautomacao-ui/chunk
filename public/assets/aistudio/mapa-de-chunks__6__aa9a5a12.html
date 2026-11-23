@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mapa de chunks</title>
+<style>
+:root{--bg:#f4f4f6;--panel:#fff;--ink:#222226;--mute:#707078;--line:#b9b9c4;--c0:#c2410c;--c1:#6d28d9;--c2:#0e7490;--c3:#15803d;--c4:#be185d;--c5:#52525b;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1e22;--panel:#26262b;--ink:#e6e6ea;--mute:#9b9ba5;--line:#4b4b55;--c0:#fb923c;--c1:#a78bfa;--c2:#22d3ee;--c3:#4ade80;--c4:#f472b6;--c5:#a1a1aa;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1e1e22;--panel:#26262b;--ink:#e6e6ea;--mute:#9b9ba5;--line:#4b4b55;--c0:#fb923c;--c1:#a78bfa;--c2:#22d3ee;--c3:#4ade80;--c4:#f472b6;--c5:#a1a1aa;color-scheme:dark}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--panel);z-index:10}
+header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+h1{font-size:15px;margin:0 auto 0 0;font-weight:600}
+button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover,button:focus-visible{border-color:var(--c1);outline:none}
+main{flex:1;display:flex;min-height:0}
+#w{flex:1;position:relative;min-width:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#hint{position:absolute;left:10px;bottom:8px;color:var(--mute);font-size:12px;pointer-events:none}
+aside{width:340px;overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:12px 14px}
+h2{font-size:13px;margin:14px 0 6px;color:var(--mute);font-weight:600}
+h2:first-child{margin-top:0}
+#f{font-size:15px;line-height:1.8}
+.t{font-weight:600}.e{color:var(--mute)}
+#v{color:var(--mute);font-variant-numeric:tabular-nums}
+.ch{display:block;width:100%;text-align:left;margin:0 0 5px;border-left:3px solid var(--line)}
+#s{border:1px dashed var(--line);border-radius:6px;padding:8px 10px;margin-bottom:6px}
+@media (max-width:760px){main{flex-direction:column}aside{width:auto;height:44%;border-left:0;border-top:1px solid var(--line)}}
+</style></head><body>
+<header><h1>Mapa de chunks</h1><button id="rnd">Aleatório</button><button id="clr">Limpar</button></header>
+<main><div id="w"><canvas id="c"></canvas><div id="hint">Clique nos pontos para montar o caminho. Arraste para mover, role para dar zoom.</div></div>
+<aside><h2>Caminho</h2><div id="f"></div><div id="v"></div><h2>Esboço da frase</h2><div id="s"></div><h2>Chunks do caminho</h2><div id="ch"></div></aside></main>
+<script>
+const DIMS=["lugar","acontecimento","pessoa","canal","tom"];
+const DATA={
+lugar:{"aeroporto":["I’m flying to [lugar].","Could I get [coisa]?"],"táxi":["Could you take me to [lugar]?","Keep the change."],"restaurante":["I’ll have [prato].","Could we have the check?"],"rua":["How do I get to [lugar]?","Is it far from here?"],"universidade":["Could you repeat [coisa]?","Could I get an extension?"],"bar":["Could I get [bebida]?","This round is on me."],"supermercado":["Where can I find [coisa]?","Is it on sale?"],"banco":["I’d like to (withdraw | deposit) [valor].","My card isn’t working."]},
+acontecimento:{"imprevisto":["My flight was (delayed | canceled).","I ended up [verbo-ing]."],"quebra":["The [máquina] stopped working.","It turned out that [causa]."],"problema com cliente":["The order (arrived late | was wrong).","We’re still waiting for [coisa]."],"mal-entendido":["There was a mix-up about [coisa].","I thought you meant [coisa]."],"notícia":["I just found out that [fato].","I didn’t see that coming."],"viagem ou evento":["We went to [lugar] for [motivo].","The best part was [coisa]."],"decisão":["I decided to [verbo] because [causa].","So far, [resultado]."],"surpresa":["You won’t believe what happened.","What are the odds?"]},
+pessoa:{"estranho":["Excuse me,","Sorry to bother you, but"],"atendente":["Could you help me [verbo]?","I have a question about [coisa]."],"colega":["Do you have a minute?","Can you give me a hand with [coisa]?"],"chefe":["I wanted to update you on [coisa].","Would it be okay if I [verbo]?"],"cliente":["Thanks for your patience.","We can offer you [coisa]."],"amigo":["Guess what?","Wanna [verbo]?"]},
+canal:{"pessoalmente":["Nice to meet you.","Let me show you."],"telefone":["I’m calling about [assunto].","Could you hold on a second?"],"e-mail":["I’m writing to [verbo].","Please find attached [coisa]."],"WhatsApp":["Just a quick message about [coisa].","Talk soon!"],"videochamada":["Can you hear me?","You’re on mute."]},
+tom:{"educado":["Would you mind [verbo-ing]?","I’d appreciate it if you could [verbo]."],"urgente":["This is quite urgent.","I need [coisa] by [prazo]."],"frustrado":["I’m afraid there’s a problem with [coisa].","This isn’t what I expected."],"animado":["I’m really excited about [coisa].","That’s great news!"],"preocupado":["I’m a bit concerned about [coisa].","I’m worried that [fato]."]}
+};
+const ORDER=[3,2,4,1,0];
+const cv=document.getElementById("c"),ctx=cv.getContext("2d");
+const nodes=[],links=[],sel={};
+const ln=(a,b,len)=>links.push({a,b,len});
+const mk=(o,x,y)=>{o.x=x;o.y=y;o.vx=0;o.vy=0;nodes.push(o);return o};
+const center=mk({label:"chunks",type:"center",dim:5},0,0);
+DIMS.forEach((d,i)=>{
+ const ang=i/5*Math.PI*2-Math.PI/2,hx=Math.cos(ang)*190,hy=Math.sin(ang)*190;
+ const hub=mk({label:d,type:"hub",dim:i},hx,hy);ln(center,hub,190);
+ const keys=Object.keys(DATA[d]);
+ keys.forEach((k,j)=>{
+  const a=ang+(j-(keys.length-1)/2)*0.55;
+  const it=mk({label:k,type:"item",dim:i,hub},hx+Math.cos(a)*90,hy+Math.sin(a)*90);ln(hub,it,80);
+  DATA[d][k].forEach(t=>{const c=mk({label:t,type:"chunk",dim:i,pk:it},it.x,it.y);ln(it,c,50)});
+ });
+});
+const vis=n=>n.type!=="chunk"||sel[n.dim]===n.pk.label;
+function tick(){
+ const V=nodes.filter(vis);
+ for(let i=0;i<V.length;i++)for(let j=i+1;j<V.length;j++){
+  const a=V[i],b=V[j];let dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy)||.1;
+  if(d>320)continue;
+  const K=(a.type==="chunk"||b.type==="chunk")?120:260,f=K/d;
+  dx/=d;dy/=d;a.vx+=dx*f;a.vy+=dy*f;b.vx-=dx*f;b.vy-=dy*f;
+ }
+ links.forEach(l=>{
+  if(!vis(l.a)||!vis(l.b))return;
+  const dx=l.b.x-l.a.x,dy=l.b.y-l.a.y,d=Math.hypot(dx,dy)||.1,f=(d-l.len)*.06;
+  l.a.vx+=dx/d*f;l.a.vy+=dy/d*f;l.b.vx-=dx/d*f;l.b.vy-=dy/d*f;
+ });
+ V.forEach(n=>{
+  n.vx-=n.x*.003;n.vy-=n.y*.003;n.vx*=.75;n.vy*=.75;
+  if(n!==drag&&n!==center){n.x+=n.vx;n.y+=n.vy}
+ });
+}
+let drag=null,hover=null,W=0,H=0,dpr=1,cam={x:0,y:0,k:1},first=true;
+function fit(){
+ dpr=window.devicePixelRatio||1;
+ const r=cv.getBoundingClientRect();W=r.width;H=r.height;
+ cv.width=W*dpr;cv.height=H*dpr;
+ if(first){cam.k=Math.min(W,H)/640;cam.x=W/2;cam.y=H/2;first=false}
+}
+new ResizeObserver(fit).observe(cv);
+const R={center:9,hub:8,item:5.5,chunk:3.5};
+const cs=getComputedStyle(document.documentElement);
+const V=n=>cs.getPropertyValue(n).trim();
+function draw(){
+ tick();
+ ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+ ctx.setTransform(dpr*cam.k,0,0,dpr*cam.k,dpr*cam.x,dpr*cam.y);
+ const nb=new Set();
+ if(hover){nb.add(hover);links.forEach(l=>{if(l.a===hover)nb.add(l.b);if(l.b===hover)nb.add(l.a)})}
+ const line=V("--line"),ink=V("--ink"),mute=V("--mute");
+ ctx.lineWidth=1/cam.k;
+ links.forEach(l=>{
+  if(!vis(l.a)||!vis(l.b))return;
+  const hot=hover&&(l.a===hover||l.b===hover);
+  ctx.globalAlpha=hover&&!hot?.2:.8;
+  ctx.strokeStyle=hot?V("--c"+l.b.dim):line;
+  ctx.beginPath();ctx.moveTo(l.a.x,l.a.y);ctx.lineTo(l.b.x,l.b.y);ctx.stroke();
+ });
+ ctx.globalAlpha=1;
+ const picks=ORDER.map(i=>i).sort((a,b)=>a-b).filter(i=>sel[DIMS[i]]!==undefined).map(i=>nodeOf(i));
+ ctx.setLineDash([6/cam.k,5/cam.k]);ctx.lineWidth=2.4/cam.k;
+ for(let i=0;i<picks.length-1;i++){
+  ctx.strokeStyle=V("--c"+picks[i+1].dim);
+  ctx.beginPath();ctx.moveTo(picks[i].x,picks[i].y);ctx.lineTo(picks[i+1].x,picks[i+1].y);ctx.stroke();
+ }
+ ctx.setLineDash([]);
+ ctx.textAlign="center";
+ nodes.forEach(n=>{
+  if(!vis(n))return;
+  const on=n.type==="item"&&sel[DIMS[n.dim]]===n.label;
+  ctx.globalAlpha=hover&&!nb.has(n)?.3:1;
+  const col=V("--c"+n.dim),r=(R[n.type]+(on?2:0));
+  ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);
+  ctx.fillStyle=n.type==="item"&&!on?V("--bg"):col;ctx.fill();
+  if(n.type==="item"||on){ctx.strokeStyle=col;ctx.lineWidth=(on?2.5:1.6)/cam.k;ctx.stroke()}
+  const s=(n.type==="hub"||n.type==="center"?13:n.type==="item"?11.5:10.5)/cam.k;
+  ctx.font=(n.type==="hub"?"600 ":"")+s+"px system-ui,sans-serif";
+  ctx.fillStyle=n.type==="chunk"?mute:ink;
+  const t=n.type==="chunk"&&n.label.length>30?n.label.slice(0,29)+"…":n.label;
+  ctx.fillText(t,n.x,n.y+r+12/cam.k);
+ });
+ ctx.globalAlpha=1;
+ requestAnimationFrame(draw);
+}
+const nodeOf=i=>nodes.find(n=>n.type==="item"&&n.dim===i&&n.label===sel[DIMS[i]]);
+function pos(e){const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+function hit(sx,sy){
+ const x=(sx-cam.x)/cam.k,y=(sy-cam.y)/cam.k;let b=null,bd=1e9;
+ nodes.forEach(n=>{if(!vis(n))return;const d=Math.hypot(n.x-x,n.y-y);if(d<Math.max(R[n.type]+6,12/cam.k)&&d<bd){b=n;bd=d}});
+ return b;
+}
+let pan=null,moved=0;
+cv.addEventListener("pointerdown",e=>{
+ cv.setPointerCapture(e.pointerId);const[sx,sy]=pos(e);moved=0;
+ const n=hit(sx,sy);
+ if(n)drag=n;else pan={sx,sy,cx:cam.x,cy:cam.y};
+});
+cv.addEventListener("pointermove",e=>{
+ const[sx,sy]=pos(e);
+ if(drag){moved++;drag.x=(sx-cam.x)/cam.k;drag.y=(sy-cam.y)/cam.k;drag.vx=drag.vy=0}
+ else if(pan){moved++;cam.x=pan.cx+sx-pan.sx;cam.y=pan.cy+sy-pan.sy}
+ else{hover=hit(sx,sy);cv.style.cursor=hover?"pointer":"default"}
+});
+cv.addEventListener("pointerup",()=>{
+ if(drag&&moved<4)click(drag);
+ drag=null;pan=null;
+});
+cv.addEventListener("wheel",e=>{
+ e.preventDefault();const[sx,sy]=pos(e),k=Math.min(3,Math.max(.3,cam.k*(e.deltaY<0?1.1:.9)));
+ cam.x=sx-(sx-cam.x)*k/cam.k;cam.y=sy-(sy-cam.y)*k/cam.k;cam.k=k;
+},{passive:false});
+function click(n){
+ const d=DIMS[n.dim];
+ if(n.type==="item"){if(sel[d]===n.label)delete sel[d];else{sel[d]=n.label;
+  nodes.forEach(c=>{if(c.type==="chunk"&&c.pk===n){c.x=n.x+(Math.random()-.5)*20;c.y=n.y+(Math.random()-.5)*20}})}}
+ else if(n.type==="hub")delete sel[d];
+ else if(n.type==="chunk")cp(n.label);
+ render();
+}
+function cp(t){try{navigator.clipboard.writeText(t).catch(()=>{})}catch(e){}}
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const $=id=>document.getElementById(id);
+function render(){
+ const any=DIMS.some(d=>sel[d]!==undefined);
+ $("f").innerHTML=DIMS.map((d,i)=>sel[d]!==undefined?`<span class="t" style="color:var(--c${i})">[${esc(sel[d])}]</span>`:`<span class="e">[ ${d} ]</span>`).join(" + ");
+ $("v").textContent="vetor = ("+DIMS.map(d=>sel[d]===undefined?0:Object.keys(DATA[d]).indexOf(sel[d])+1).join(", ")+")";
+ const parts=ORDER.filter(i=>sel[DIMS[i]]!==undefined).map(i=>DATA[DIMS[i]][sel[DIMS[i]]][0]);
+ const txt=parts.join(" ");
+ $("s").innerHTML=any?`${esc(txt)}<br><button id="cps" style="margin-top:6px">Copiar</button>`:`<span class="e">Escolha ao menos um ponto no grafo.</span>`;
+ if(any)$("cps").onclick=()=>cp(txt);
+ $("ch").innerHTML=DIMS.filter(d=>sel[d]!==undefined).map((d,_)=>DATA[d][sel[d]].map(t=>`<button class="ch" data-t="${esc(t).replace(/"/g,"&quot;")}" style="border-left-color:var(--c${DIMS.indexOf(d)})">${esc(t)}</button>`).join("")).join("")||`<span class="e">Os chunks de cada ponto escolhido aparecem aqui. Clique para copiar.</span>`;
+ document.querySelectorAll(".ch").forEach(b=>b.onclick=()=>cp(b.dataset.t));
+}
+$("clr").onclick=()=>{DIMS.forEach(d=>delete sel[d]);render()};
+$("rnd").onclick=()=>{DIMS.forEach(d=>{const k=Object.keys(DATA[d]);sel[d]=k[Math.floor(Math.random()*k.length)]});
+ nodes.forEach(c=>{if(c.type==="chunk"&&sel[c.dim]===c.pk.label){c.x=c.pk.x;c.y=c.pk.y}});render()};
+for(let i=0;i<260;i++)tick();
+fit();render();requestAnimationFrame(draw);
+</script></body></html>

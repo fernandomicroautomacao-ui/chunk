@@ -1,0 +1,8 @@
+{
+  "name": "Mapa de Chunks, Início de Frases & Fala Conectada",
+  "description": "Explorador interativo de chunks, inícios de frases (Q&A), fala conectada (Careful vs Natural Speech), os 5 fenômenos fonéticos (Linking, Schwa, Stress, Reductions, Intonation) e treino de fluência em inglês e italiano.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
